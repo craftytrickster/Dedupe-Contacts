@@ -1,9 +1,10 @@
 [package]
 name = "dedupe"
-version = "0.1.0"
+version = "0.1.1"
 authors = ["David Raifaizen <d-raif@hotmail.com>"]
 
 [dependencies]
 fst = "0.1"
 csv = "0.14"
 regex = "0.1"
+lazy_static = "0.1.15"

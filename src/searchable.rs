@@ -131,17 +131,20 @@ impl<'a> SearchableList<'a> {
     }
 }
 
+lazy_static! {
+    static ref RE_NAME: Regex = Regex::new("-|'| ").unwrap();
+    static ref RE_COMPANY: Regex = Regex::new(r"-|'|\.| ").unwrap();
+    static ref RE_PHONE: Regex = Regex::new(r"-|\.| ").unwrap();
+}
+
 fn sanatize_name(name: &str) -> String {
-    let re = Regex::new("-|'| ").unwrap();
-    re.replace(name, "")
+    RE_NAME.replace(name, "")
 }
 
 fn sanatize_company(company: &str) -> String {
-    let re = Regex::new(r"-|'|\.| ").unwrap();
-    re.replace(company, "")
+    RE_COMPANY.replace(company, "")
 }
 
 fn sanatize_phone(phone: &str) -> String {
-    let re = Regex::new(r"-|\.| ").unwrap();
-    re.replace(phone, "")
+    RE_PHONE.replace(phone, "")
 }

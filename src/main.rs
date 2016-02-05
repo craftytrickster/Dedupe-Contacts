@@ -1,6 +1,8 @@
 extern crate csv;
 extern crate fst;
 extern crate regex;
+#[macro_use]
+extern crate lazy_static;
 
 mod interface;
 mod models;
