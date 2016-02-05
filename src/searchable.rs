@@ -4,7 +4,7 @@ use regex::Regex;
 use std::collections::{HashSet, HashMap};
 
 // Uses the fst fuzzy string search in order to get possible value matches,
-// and then looks up name matches in name -> id hashmaps
+// and then looks up name matches in name -> Person hashmaps
 // Needed because fst does not support duplicate entries
 pub struct SearchableList<'a > {
     first_name_fuzzy: Set,

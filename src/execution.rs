@@ -53,21 +53,26 @@ fn get_duplicate_ids_against_base<'a>(searchable_base: &SearchableList<'a>, comp
         }
 
         let mut id_matches = HashSet::new();
+        let mut already_added_duplicates = HashSet::new();
         for matched_person in matches.into_iter() {
             if matched_person.id == person.id {
                 // we do not care about the person matching themselves
                 continue;
             }
 
-            if id_matches.contains(&person.id) {
+            if id_matches.contains(&matched_person.id) {
                 if !confirmed_duplicates.contains_key(&person.id) {
                     confirmed_duplicates.insert(person.id, Vec::new());
                 }
 
-                confirmed_duplicates.get_mut(&person.id).unwrap().push(matched_person);
+                if !already_added_duplicates.contains(&matched_person.id) {
+                    confirmed_duplicates.get_mut(&person.id).unwrap().push(matched_person);
+                }
+
+                already_added_duplicates.insert(matched_person.id);
             }
 
-            id_matches.insert(person.id);
+            id_matches.insert(matched_person.id);
         }
     }
     confirmed_duplicates
