@@ -1,5 +1,5 @@
 use models::{DedupeTask, Person};
-use std::collections::HashSet;
+use std::collections::{HashSet, HashMap};
 use searchable::SearchableList;
 use file::FileUtil;
 
@@ -8,60 +8,67 @@ pub fn run(task: DedupeTask) -> String {
 
     match task {
         DedupeTask::SingleFile(file) => {
-            let mut single_list = file_util.file_to_list(&file);
+            let single_list = file_util.file_to_list(&file);
             let searchable_base = SearchableList::new(&single_list);
 
-            mark_duplicates_against_base(&searchable_base, &mut single_list);
-            file_util.write_to_disk(&file, single_list)
+            let duplicate_ids = get_duplicate_ids_against_base(&searchable_base, &single_list);
+            file_util.write_to_disk(&file, &single_list, duplicate_ids)
         },
         DedupeTask::FileComparison(base_file, comparison_file) => {
             let base_list = file_util.file_to_list(&base_file);
             let searchable_base = SearchableList::new(&base_list);
-            let mut comparison_list = file_util.file_to_list(&comparison_file);
+            let comparison_list = file_util.file_to_list(&comparison_file);
 
-            mark_duplicates_against_base(&searchable_base, &mut comparison_list);
-            file_util.write_to_disk(&comparison_file, comparison_list)
+            let duplicate_ids = get_duplicate_ids_against_base(&searchable_base, &comparison_list);
+            file_util.write_to_disk(&comparison_file, &comparison_list, duplicate_ids)
         }
     }
 }
 
 // go through items, if there are at least two field matches, then flag as possible duplicate
-fn mark_duplicates_against_base(searchable_base: &SearchableList, comparison_list: &mut Vec<Person>) {
+fn get_duplicate_ids_against_base<'a>(searchable_base: &SearchableList<'a>, comparison_list: &Vec<Person>) -> HashMap<u64, Vec<&'a Person>> {
+    let mut confirmed_duplicates = HashMap::new();
+
     for person in comparison_list {
-        let mut ids = Vec::new();
+        let mut matches = Vec::new();
 
         if let Some(ref first_name) = person.first_name {
             let results = searchable_base.get_first_name_matches(first_name);
-            ids.extend_from_slice(&results);
+            matches.extend_from_slice(&results);
         }
 
         if let Some(ref last_name) = person.last_name {
             let results = searchable_base.get_last_name_matches(last_name);
-            ids.extend_from_slice(&results);
+            matches.extend_from_slice(&results);
         }
 
         if let Some(ref company) = person.company {
             let results = searchable_base.get_companies_matches(company);
-            ids.extend_from_slice(&results);
+            matches.extend_from_slice(&results);
         }
 
         if let Some(ref phone_number) = person.phone_number {
             let results = searchable_base.get_phone_numbers_matches(phone_number);
-            ids.extend_from_slice(&results);
+            matches.extend_from_slice(&results);
         }
 
         let mut id_matches = HashSet::new();
-        let mut is_duplicate = false;
-        // we do not care about the person matching themselves
-        for id in ids.into_iter().filter(|id| *id != person.id) {
-            if id_matches.contains(&id) {
-                is_duplicate = true;
-                break;
+        for matched_person in matches.into_iter() {
+            if matched_person.id == person.id {
+                // we do not care about the person matching themselves
+                continue;
             }
 
-            id_matches.insert(id);
-        }
+            if id_matches.contains(&person.id) {
+                if !confirmed_duplicates.contains_key(&person.id) {
+                    confirmed_duplicates.insert(person.id, Vec::new());
+                }
 
-        person.is_duplicate = is_duplicate;
+                confirmed_duplicates.get_mut(&person.id).unwrap().push(matched_person);
+            }
+
+            id_matches.insert(person.id);
+        }
     }
+    confirmed_duplicates
 }
