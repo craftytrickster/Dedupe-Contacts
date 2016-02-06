@@ -39,8 +39,8 @@ impl FileUtil {
 
     pub fn write_to_disk<'a>(&self, file: &str, list: &'a Vec<Person>, duplicate_ids: HashMap<u64, Vec<&'a Person>>) -> String {
         let mut new_file: String = {
-            if file.contains(".") {
-                file.split(".").next().unwrap()
+            if file.ends_with(".csv") {
+                &file[0..file.len() - 4] // truncate csv
             }
             else { file }
         }.to_owned();
