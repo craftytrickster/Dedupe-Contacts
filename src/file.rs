@@ -66,7 +66,12 @@ fn get_duplicate_string<'a>(id: &u64, duplicate_ids: &HashMap<u64, Vec<&'a Perso
 
     match duplicate_ids.get(id) {
         Some(matches) => {
-            for person in matches {
+            for (i, person) in matches.iter().enumerate() {
+                if i > 5 { // after displaying several matches, no need to show all
+                    result.push_str(&format!("and {} more ...", matches.len() - i));
+                    return result;
+                }
+
                 let last_name = person.last_name.clone().unwrap_or(String::new());
                 let first_name = person.first_name.clone().unwrap_or(String::new());
 

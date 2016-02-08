@@ -138,13 +138,13 @@ lazy_static! {
 }
 
 fn sanatize_name(name: &str) -> String {
-    RE_NAME.replace(name, "")
+    RE_NAME.replace(name, "").to_lowercase()
 }
 
 fn sanatize_company(company: &str) -> String {
-    RE_COMPANY.replace(company, "")
+    RE_COMPANY.replace(company, "").to_lowercase()
 }
 
 fn sanatize_phone(phone: &str) -> String {
-    RE_PHONE.replace(phone, "")
+    RE_PHONE.replace(phone, "").to_lowercase()
 }
