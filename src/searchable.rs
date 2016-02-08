@@ -98,23 +98,23 @@ impl<'a> SearchableList<'a> {
     }
 
     pub fn get_first_name_matches(&self, first_name: &str) -> Vec<&'a Person> {
-        self.get_matches(&self.first_name_fuzzy, &self.first_name_lookup, &sanatize_name(first_name))
+        self.get_matches(&self.first_name_fuzzy, &self.first_name_lookup, &sanatize_name(first_name), 3)
     }
 
     pub fn get_last_name_matches(&self, last_name: &str) -> Vec<&'a Person> {
-        self.get_matches(&self.last_name_fuzzy, &self.last_name_lookup, &sanatize_name(last_name))
+        self.get_matches(&self.last_name_fuzzy, &self.last_name_lookup, &sanatize_name(last_name), 2)
     }
 
     pub fn get_companies_matches(&self, company: &str) -> Vec<&'a Person> {
-        self.get_matches(&self.company_fuzzy, &self.company_lookup, &sanatize_company(company))
+        self.get_matches(&self.company_fuzzy, &self.company_lookup, &sanatize_company(company), 2)
     }
 
     pub fn get_phone_numbers_matches(&self, phone_number: &str) -> Vec<&'a Person> {
-        self.get_matches(&self.phone_fuzzy, &self.phone_lookup, &sanatize_phone(phone_number))
+        self.get_matches(&self.phone_fuzzy, &self.phone_lookup, &sanatize_phone(phone_number), 2)
     }
 
-    fn get_matches(&self, set: &Set, map: &HashMap<String, Vec<&'a Person>>, item: &str) -> Vec<&'a Person> {
-        let lev = Levenshtein::new(item, 2).unwrap();
+    fn get_matches(&self, set: &Set, map: &HashMap<String, Vec<&'a Person>>, item: &str, distance: u32) -> Vec<&'a Person> {
+        let lev = Levenshtein::new(item, distance).unwrap();
         let stream = set.search(lev).into_stream();
 
         let raw_names = stream.into_strs().unwrap();
@@ -132,19 +132,17 @@ impl<'a> SearchableList<'a> {
 }
 
 lazy_static! {
-    static ref RE_NAME: Regex = Regex::new("-|'| ").unwrap();
-    static ref RE_COMPANY: Regex = Regex::new(r"-|'|\.| ").unwrap();
-    static ref RE_PHONE: Regex = Regex::new(r"-|\.| ").unwrap();
+    static ref RE_SANATIZE: Regex = Regex::new(r"-|'|\.| ").unwrap();
 }
 
 fn sanatize_name(name: &str) -> String {
-    RE_NAME.replace(name, "").to_lowercase()
+    RE_SANATIZE.replace(name, "").to_lowercase()
 }
 
 fn sanatize_company(company: &str) -> String {
-    RE_COMPANY.replace(company, "").to_lowercase()
+    RE_SANATIZE.replace(company, "").to_lowercase()
 }
 
 fn sanatize_phone(phone: &str) -> String {
-    RE_PHONE.replace(phone, "").to_lowercase()
+    RE_SANATIZE.replace(phone, "").to_lowercase()
 }
