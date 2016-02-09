@@ -102,7 +102,7 @@ impl<'a> SearchableList<'a> {
     }
 
     pub fn get_first_name_matches(&self, first_name: &str) -> Vec<&'a Person> {
-        self.get_matches(&self.first_name_fuzzy, &self.first_name_lookup, &sanatize_name(first_name), 3)
+        self.get_matches(&self.first_name_fuzzy, &self.first_name_lookup, &sanatize_name(first_name), 2)
     }
 
     pub fn get_last_name_matches(&self, last_name: &str) -> Vec<&'a Person> {
@@ -117,6 +117,7 @@ impl<'a> SearchableList<'a> {
         self.get_matches(&self.phone_fuzzy, &self.phone_lookup, &sanatize_phone(phone_number), 2)
     }
 
+    // it seems that any distance over 2 causes errors with the fst engine
     fn get_matches(&self, set: &Set, map: &HashMap<String, Vec<&'a Person>>, item: &str, distance: u32) -> Vec<&'a Person> {
         let mut result = Vec::new();
 
@@ -144,14 +145,21 @@ lazy_static! {
     static ref RE_SANATIZE: Regex = Regex::new("[^A-Za-z0-9]").unwrap();
 }
 
+// avoid overly long strings
+fn truncate(input: &str) -> &str {
+    let max_len = if input.len() > 25 { 25 } else { input.len() };
+
+    &input[0..max_len]
+}
+
 fn sanatize_name(name: &str) -> String {
-    RE_SANATIZE.replace_all(name, "").to_lowercase()
+    RE_SANATIZE.replace_all(truncate(name), "").to_lowercase()
 }
 
 fn sanatize_company(company: &str) -> String {
-    RE_SANATIZE.replace_all(company, "").to_lowercase()
+    RE_SANATIZE.replace_all(truncate(company), "").to_lowercase()
 }
 
 fn sanatize_phone(phone: &str) -> String {
-    RE_SANATIZE.replace_all(phone, "").to_lowercase()
+    RE_SANATIZE.replace_all(truncate(phone), "").to_lowercase()
 }
