@@ -17,21 +17,25 @@ impl FileUtil {
         let mut rdr = csv::Reader::from_file(file).unwrap();
 
         for record in rdr.decode() {
-            // Last Name | First Name | Company | Phone Number
-            let (last_name, first_name, company, phone_number):
-                (Option<String>, Option<String>, Option<String>, Option<String>) = record.unwrap();
+            match record {
+                Err(e) => { println!("Error trying to parse illegal text row - {}", e); },
+                Ok(record) => {
+                    let (last_name, first_name, company, phone_number):
+                        (Option<String>, Option<String>, Option<String>, Option<String>) = record;
 
-            self.last_id_created += 1;
+                        self.last_id_created += 1;
 
-            let person = Person {
-                id: self.last_id_created,
-                first_name: first_name,
-                last_name: last_name,
-                company: company,
-                phone_number: phone_number
-            };
+                        let person = Person {
+                            id: self.last_id_created,
+                            first_name: first_name,
+                            last_name: last_name,
+                            company: company,
+                            phone_number: phone_number
+                        };
 
-            list.push(person);
+                        list.push(person);
+                }
+            }
         }
 
         list

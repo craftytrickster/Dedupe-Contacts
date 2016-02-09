@@ -24,6 +24,10 @@ pub struct SearchableList<'a > {
 impl<'a> SearchableList<'a> {
     pub fn new(base_list: &'a Vec<Person>) -> SearchableList<'a> {
         fn insert_item<'a>(item: &str, person: &'a Person, set: &mut HashSet<String>, map: &mut HashMap<String, Vec<&'a Person>>) {
+            if item.is_empty() {
+                return; // avoid storing records for blank items
+            }
+
             set.insert(item.to_owned());
 
             if !map.contains_key(item) {
@@ -114,11 +118,16 @@ impl<'a> SearchableList<'a> {
     }
 
     fn get_matches(&self, set: &Set, map: &HashMap<String, Vec<&'a Person>>, item: &str, distance: u32) -> Vec<&'a Person> {
+        let mut result = Vec::new();
+
+        if item.is_empty() {
+            return result;
+        }
+
         let lev = Levenshtein::new(item, distance).unwrap();
         let stream = set.search(lev).into_stream();
 
         let raw_names = stream.into_strs().unwrap();
-        let mut result = Vec::new();
 
         for name in raw_names.into_iter() {
             let people = map.get(&name).unwrap();
@@ -132,17 +141,17 @@ impl<'a> SearchableList<'a> {
 }
 
 lazy_static! {
-    static ref RE_SANATIZE: Regex = Regex::new(r"-|'|\.| ").unwrap();
+    static ref RE_SANATIZE: Regex = Regex::new("[^A-Za-z0-9]").unwrap();
 }
 
 fn sanatize_name(name: &str) -> String {
-    RE_SANATIZE.replace(name, "").to_lowercase()
+    RE_SANATIZE.replace_all(name, "").to_lowercase()
 }
 
 fn sanatize_company(company: &str) -> String {
-    RE_SANATIZE.replace(company, "").to_lowercase()
+    RE_SANATIZE.replace_all(company, "").to_lowercase()
 }
 
 fn sanatize_phone(phone: &str) -> String {
-    RE_SANATIZE.replace(phone, "").to_lowercase()
+    RE_SANATIZE.replace_all(phone, "").to_lowercase()
 }
