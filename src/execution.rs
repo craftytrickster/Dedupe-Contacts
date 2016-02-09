@@ -2,6 +2,7 @@ use models::{DedupeTask, Person};
 use std::collections::{HashSet, HashMap};
 use searchable::SearchableList;
 use file::FileUtil;
+use interface::display_execution_progress;
 
 pub fn run(task: DedupeTask) -> String {
     let mut file_util = FileUtil::new();
@@ -29,7 +30,9 @@ pub fn run(task: DedupeTask) -> String {
 fn get_duplicate_ids_against_base<'a>(searchable_base: &SearchableList<'a>, comparison_list: &Vec<Person>) -> HashMap<u64, Vec<&'a Person>> {
     let mut confirmed_duplicates = HashMap::new();
 
-    for person in comparison_list {
+    for (i, person) in comparison_list.iter().enumerate() {
+        display_execution_progress(i, comparison_list.len());
+
         let mut matches = Vec::new();
 
         if let Some(ref first_name) = person.first_name {

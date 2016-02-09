@@ -1,7 +1,9 @@
 use std::process::exit;
 use std::env;
-use std::io::{self};
+use std::io::{self, Write};
 use models::DedupeTask;
+
+const LINE_CLEAR: &'static [u8] = b"\r                                                                 ";
 
 pub fn read_user_input() -> DedupeTask {
     let user_args = env::args().skip(1).collect::<Vec<String>>();
@@ -10,6 +12,21 @@ pub fn read_user_input() -> DedupeTask {
 
 pub fn confirm_success(file_name: &str) {
     println!("Dedupe has generated the following for your viewing pleasure: {}", file_name);
+}
+
+pub fn display_execution_progress(cur_item: usize, total_count: usize) {
+    if cur_item == total_count - 1 {
+        io::stdout().write(LINE_CLEAR).unwrap();
+        io::stdout().write(b"\rDuplicate Processing has been completed.").unwrap();
+        println!("");
+        println!("");
+        return;
+    }
+
+    let progress = format!("{:.*}", 2, (cur_item as f64 / total_count as f64) * 100.0);
+    let msg = format!("\rCurrent progress of Duplicate Processing: {}%", progress);
+
+    io::stdout().write(&msg.into_bytes()).unwrap();
 }
 
 fn handle_args(user_args: Vec<String>) -> DedupeTask {

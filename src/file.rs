@@ -17,24 +17,21 @@ impl FileUtil {
         let mut rdr = csv::Reader::from_file(file).unwrap();
 
         for record in rdr.decode() {
-            match record {
-                Err(e) => { println!("Error trying to parse illegal text row - {}", e); },
-                Ok(record) => {
-                    let (last_name, first_name, company, phone_number):
-                        (Option<String>, Option<String>, Option<String>, Option<String>) = record;
+            if let Ok(record) = record {
+                let (last_name, first_name, company, phone_number):
+                    (Option<String>, Option<String>, Option<String>, Option<String>) = record;
 
-                        self.last_id_created += 1;
+                self.last_id_created += 1;
 
-                        let person = Person {
-                            id: self.last_id_created,
-                            first_name: first_name,
-                            last_name: last_name,
-                            company: company,
-                            phone_number: phone_number
-                        };
+                let person = Person {
+                    id: self.last_id_created,
+                    first_name: first_name,
+                    last_name: last_name,
+                    company: company,
+                    phone_number: phone_number
+                };
 
-                        list.push(person);
-                }
+                list.push(person);
             }
         }
 
@@ -68,26 +65,24 @@ impl FileUtil {
 fn get_duplicate_string<'a>(id: &u64, duplicate_ids: &HashMap<u64, Vec<&'a Person>>) -> String {
     let mut result = String::new();
 
-    match duplicate_ids.get(id) {
-        Some(matches) => {
-            for (i, person) in matches.iter().enumerate() {
-                if i > 5 { // after displaying several matches, no need to show all
-                    result.push_str(&format!("and {} more ...", matches.len() - i));
-                    return result;
-                }
-
-                let last_name = person.last_name.clone().unwrap_or(String::new());
-                let first_name = person.first_name.clone().unwrap_or(String::new());
-
-                result.push_str(&format!("{}, {} | ", last_name, first_name));
+    if let Some(matches) = duplicate_ids.get(id) {
+        for (i, person) in matches.iter().enumerate() {
+            if i > 5 { // after displaying several matches, no need to show all
+                result.push_str(&format!("and {} more ...", matches.len() - i));
+                return result;
             }
 
-            // remove trailing chars
-            result.pop();
-            result.pop();
-            result.pop();
+            let last_name = person.last_name.clone().unwrap_or(String::new());
+            let first_name = person.first_name.clone().unwrap_or(String::new());
+
+            result.push_str(&format!("{}, {} | ", last_name, first_name));
         }
-        None => { result.push_str("false"); }
+
+        // remove trailing chars
+        result.pop();
+        result.pop();
+        result.pop();
     }
+
     result
 }
