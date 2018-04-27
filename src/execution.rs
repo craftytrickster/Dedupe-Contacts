@@ -3,22 +3,23 @@ use std::collections::{HashSet, HashMap};
 use searchable::SearchableList;
 use file::FileUtil;
 use interface::display_execution_progress;
+use std::error::Error;
 
-pub fn run(task: DedupeTask) -> String {
+pub fn run(task: DedupeTask) -> Result<String, Box<Error>> {
     let mut file_util = FileUtil::new();
 
     match task {
         DedupeTask::SingleFile(file) => {
-            let single_list = file_util.file_to_list(&file);
+            let single_list = file_util.file_to_list(&file)?;
             let searchable_base = SearchableList::new(&single_list);
 
             let duplicate_ids = get_duplicate_ids_against_base(&searchable_base, &single_list);
             file_util.write_to_disk(&file, &single_list, duplicate_ids)
         },
         DedupeTask::FileComparison(base_file, comparison_file) => {
-            let base_list = file_util.file_to_list(&base_file);
+            let base_list = file_util.file_to_list(&base_file)?;
             let searchable_base = SearchableList::new(&base_list);
-            let comparison_list = file_util.file_to_list(&comparison_file);
+            let comparison_list = file_util.file_to_list(&comparison_file)?;
 
             let duplicate_ids = get_duplicate_ids_against_base(&searchable_base, &comparison_list);
             file_util.write_to_disk(&comparison_file, &comparison_list, duplicate_ids)

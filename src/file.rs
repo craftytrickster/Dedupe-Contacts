@@ -1,6 +1,7 @@
 use models::Person;
 use std::collections::HashMap;
 use csv;
+use std::error::Error;
 
 pub struct FileUtil {
     last_id_created: u64
@@ -11,10 +12,10 @@ impl FileUtil {
         FileUtil { last_id_created: 0 }
     }
 
-    pub fn file_to_list(&mut self, file: &str) -> Vec<Person> {
+    pub fn file_to_list(&mut self, file: &str) -> Result<Vec<Person>, Box<Error>> {
         let mut list = Vec::new();
 
-        let mut rdr = csv::Reader::from_file(file).unwrap();
+        let mut rdr = csv::Reader::from_file(file)?;
 
         for record in rdr.decode() {
             if let Ok(record) = record {
@@ -35,10 +36,16 @@ impl FileUtil {
             }
         }
 
-        list
+        Ok(list)
     }
 
-    pub fn write_to_disk<'a>(&self, file: &str, list: &'a Vec<Person>, duplicate_ids: HashMap<u64, Vec<&'a Person>>) -> String {
+    pub fn write_to_disk<'a>(
+        &self,
+        file: &str,
+        list: &'a Vec<Person>,
+        duplicate_ids: HashMap<u64, Vec<&'a Person>>
+    ) -> Result<String, Box<Error>> {
+
         let mut new_file: String = {
             if file.ends_with(".csv") {
                 &file[0..file.len() - 4] // truncate csv
@@ -48,17 +55,17 @@ impl FileUtil {
 
         new_file.push_str("-DUPLICATE-FLAG.csv");
 
-        let mut writer = csv::Writer::from_file(&new_file).unwrap();
-        writer.encode(("Last Name", "First Name", "Company", "Phone Number", "Duplicate")).unwrap();
+        let mut writer = csv::Writer::from_file(&new_file)?;
+        writer.encode(("Last Name", "First Name", "Company", "Phone Number", "Duplicate"))?;
 
         for person in list {
             let duplicate_string = get_duplicate_string(&person.id, &duplicate_ids);
             writer.encode(
                 (&person.last_name, &person.first_name, &person.company, &person.phone_number, duplicate_string)
-            ).unwrap();
+            )?;
         }
 
-        new_file
+        Ok(new_file)
     }
 }
 
