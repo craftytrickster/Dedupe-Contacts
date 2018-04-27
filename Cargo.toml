@@ -4,7 +4,8 @@ version = "0.1.1"
 authors = ["David Raifaizen <d-raif@hotmail.com>"]
 
 [dependencies]
-csv = "0.14.4"
-fst = "0.1.29"
-lazy_static = "0.2.0"
-regex = "0.1.67"
+csv = "0.15.0"
+fst = "0.3"
+fst-levenshtein = "0.2"
+lazy_static = "1.0.0"
+regex = "0.2.10"

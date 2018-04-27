@@ -1,5 +1,6 @@
 use models::Person;
-use fst::{Levenshtein, Set, IntoStreamer};
+use fst::{Set, IntoStreamer};
+use fst_levenshtein::Levenshtein;
 use regex::Regex;
 use std::collections::{HashSet, HashMap};
 

@@ -1,5 +1,6 @@
 extern crate csv;
 extern crate fst;
+extern crate fst_levenshtein;
 extern crate regex;
 #[macro_use]
 extern crate lazy_static;
