@@ -1,4 +1,4 @@
-use models::Person;
+use models::Entry;
 use fst::{Set, IntoStreamer};
 use fst_levenshtein::Levenshtein;
 use regex::Regex;
@@ -26,15 +26,15 @@ impl<'a, T> FuzzyMap<'a, T> {
         }
 
         let lev = Levenshtein::new(item, distance).unwrap();
-    //
+
         let stream = self.set.search(lev).into_stream();
 
         let raw_names = stream.into_strs().unwrap();
 
         for name in raw_names.into_iter() {
-            let people = self.hashmap.get(&name).unwrap();
-            for person in people {
-                result.push(*person);
+            let entries = self.hashmap.get(&name).unwrap();
+            for entry in entries {
+                result.push(*entry);
             }
         }
 
@@ -43,16 +43,16 @@ impl<'a, T> FuzzyMap<'a, T> {
 }
 
 pub struct SearchableList<'a> {
-    first_name_map: FuzzyMap<'a, Person>,
-    last_name_map: FuzzyMap<'a, Person>,
-    company_map: FuzzyMap<'a, Person>,
-    phone_map: FuzzyMap<'a, Person>
+    first_name_map: FuzzyMap<'a, Entry>,
+    last_name_map: FuzzyMap<'a, Entry>,
+    company_map: FuzzyMap<'a, Entry>,
+    phone_map: FuzzyMap<'a, Entry>
 }
 
 
 impl<'a> SearchableList<'a> {
-    pub fn new(base_list: &'a Vec<Person>) -> SearchableList<'a> {
-        fn insert_item<'a>(item: String, person: &'a Person, set: &mut HashSet<String>, map: &mut HashMap<String, Vec<&'a Person>>) {
+    pub fn new(base_list: &'a [Entry]) -> SearchableList<'a> {
+        fn insert_item<'a>(item: String, entry: &'a Entry, set: &mut HashSet<String>, map: &mut HashMap<String, Vec<&'a Entry>>) {
             if item.is_empty() {
                 return; // avoid storing records for blank items
             }
@@ -60,7 +60,7 @@ impl<'a> SearchableList<'a> {
             set.insert(item.clone());
 
             let list = map.entry(item).or_insert(Vec::new());
-            list.push(person);
+            list.push(entry);
         }
 
         let mut first_name_fuzzy = HashSet::new();
@@ -75,25 +75,25 @@ impl<'a> SearchableList<'a> {
         let mut phone_fuzzy = HashSet::new();
         let mut phone_lookup = HashMap::new();
 
-        for person in base_list {
-            if let Some(ref first_name) = person.first_name {
+        for entry in base_list {
+            if let Some(first_name) = entry.row.get(0) {
                 let key = sanatize_name(first_name);
-                insert_item(key, person, &mut first_name_fuzzy, &mut first_name_lookup);
+                insert_item(key, entry, &mut first_name_fuzzy, &mut first_name_lookup);
             }
 
-            if let Some(ref last_name) = person.last_name {
+            if let Some(last_name) = entry.row.get(1) {
                 let key = sanatize_name(last_name);
-                insert_item(key, person, &mut last_name_fuzzy, &mut last_name_lookup);
+                insert_item(key, entry, &mut last_name_fuzzy, &mut last_name_lookup);
             }
 
-            if let Some(ref company) = person.company {
+            if let Some(company) = entry.row.get(2) {
                 let key = sanatize_company(company);
-                insert_item(key, person, &mut company_fuzzy, &mut company_lookup);
+                insert_item(key, entry, &mut company_fuzzy, &mut company_lookup);
             }
 
-            if let Some(ref phone_number) = person.phone_number {
+            if let Some(phone_number) = entry.row.get(3) {
                 let key = sanatize_phone(phone_number);
-                insert_item(key, person, &mut phone_fuzzy, &mut phone_lookup);
+                insert_item(key, entry, &mut phone_fuzzy, &mut phone_lookup);
             }
         }
 
@@ -120,19 +120,19 @@ impl<'a> SearchableList<'a> {
         }
     }
 
-    pub fn get_first_name_matches(&'a self, first_name: &str) -> Vec<&'a Person> {
+    pub fn get_first_name_matches(&'a self, first_name: &str) -> Vec<&'a Entry> {
         self.first_name_map.get_matches(&sanatize_name(first_name), 2)
     }
 
-    pub fn get_last_name_matches(&self, last_name: &str) -> Vec<&'a Person> {
+    pub fn get_last_name_matches(&self, last_name: &str) -> Vec<&'a Entry> {
         self.last_name_map.get_matches(&sanatize_name(last_name), 2)
     }
 
-    pub fn get_companies_matches(&self, company: &str) -> Vec<&'a Person> {
+    pub fn get_companies_matches(&self, company: &str) -> Vec<&'a Entry> {
         self.company_map.get_matches(&sanatize_company(company), 2)
     }
 
-    pub fn get_phone_numbers_matches(&self, phone_number: &str) -> Vec<&'a Person> {
+    pub fn get_phone_numbers_matches(&self, phone_number: &str) -> Vec<&'a Entry> {
         self.phone_map.get_matches(&sanatize_phone(phone_number), 2)
     }
 }
