@@ -1,125 +1,26 @@
-use models::Person;
+use models::{CsvData, Entry};
 use fst::{Set, IntoStreamer};
 use fst_levenshtein::Levenshtein;
 use regex::Regex;
-use std::collections::{HashSet, HashMap};
+use std::collections::BTreeMap;
 
 // Uses the fst fuzzy string search in order to get possible value matches,
-// and then looks up name matches in name -> Person hashmaps
+// and then looks up name matches in name -> Person BTreeMaps
 // Needed because fst does not support duplicate entries
-pub struct SearchableList<'a > {
-    first_name_fuzzy: Set,
-    first_name_lookup: HashMap<String, Vec<&'a Person>>,
-
-    last_name_fuzzy: Set,
-    last_name_lookup: HashMap<String, Vec<&'a Person>>,
-
-    company_fuzzy: Set,
-    company_lookup: HashMap<String, Vec<&'a Person>>,
-
-    phone_fuzzy: Set,
-    phone_lookup: HashMap<String, Vec<&'a Person>>
+pub struct FuzzyMap<'a, T: 'a> {
+    set: Set,
+    map: BTreeMap<String, Vec<&'a T>>
 }
 
+impl<'a, T> FuzzyMap<'a, T> {
+    pub fn new(map: BTreeMap<String, Vec<&'a T>>) -> Self {
+        let set = Set::from_iter(map.iter().map(|i| i.0)).unwrap();
 
-impl<'a> SearchableList<'a> {
-    pub fn new(base_list: &'a Vec<Person>) -> SearchableList<'a> {
-        fn insert_item<'a>(item: &str, person: &'a Person, set: &mut HashSet<String>, map: &mut HashMap<String, Vec<&'a Person>>) {
-            if item.is_empty() {
-                return; // avoid storing records for blank items
-            }
-
-            set.insert(item.to_owned());
-
-            if !map.contains_key(item) {
-                map.insert(item.to_owned(), Vec::new());
-            }
-
-            map.get_mut(item).unwrap().push(person);
-        }
-
-        let mut first_name_fuzzy = HashSet::new();
-        let mut first_name_lookup = HashMap::new();
-
-        let mut last_name_fuzzy = HashSet::new();
-        let mut last_name_lookup = HashMap::new();
-
-        let mut company_fuzzy = HashSet::new();
-        let mut company_lookup = HashMap::new();
-
-        let mut phone_fuzzy = HashSet::new();
-        let mut phone_lookup = HashMap::new();
-
-        for person in base_list {
-            if let Some(ref first_name) = person.first_name {
-                let key = sanatize_name(first_name);
-                insert_item(&key, person, &mut first_name_fuzzy, &mut first_name_lookup);
-            }
-
-            if let Some(ref last_name) = person.last_name {
-                let key = sanatize_name(last_name);
-                insert_item(&key, person, &mut last_name_fuzzy, &mut last_name_lookup);
-            }
-
-            if let Some(ref company) = person.company {
-                let key = sanatize_company(company);
-                insert_item(&key, person, &mut company_fuzzy, &mut company_lookup);
-            }
-
-            if let Some(ref phone_number) = person.phone_number {
-                let key = sanatize_phone(phone_number);
-                insert_item(&key, person, &mut phone_fuzzy, &mut phone_lookup);
-            }
-        }
-
-        // sort prior to insertion as needed by fst
-        let mut sorted_first = first_name_fuzzy.drain().collect::<Vec<String>>();
-        sorted_first.sort();
-        let mut sorted_last = last_name_fuzzy.drain().collect::<Vec<String>>();
-        sorted_last.sort();
-        let mut sorted_company = company_fuzzy.drain().collect::<Vec<String>>();
-        sorted_company.sort();
-        let mut sorted_phone = phone_fuzzy.drain().collect::<Vec<String>>();
-        sorted_phone.sort();
-
-        let first_name_set = Set::from_iter(sorted_first).unwrap();
-        let last_name_set = Set::from_iter(sorted_last).unwrap();
-        let company_set = Set::from_iter(sorted_company).unwrap();
-        let phone_set = Set::from_iter(sorted_phone).unwrap();
-
-        SearchableList {
-            first_name_fuzzy: first_name_set,
-            first_name_lookup: first_name_lookup,
-
-            last_name_fuzzy: last_name_set,
-            last_name_lookup: last_name_lookup,
-
-            company_fuzzy: company_set,
-            company_lookup: company_lookup,
-
-            phone_fuzzy: phone_set,
-            phone_lookup: phone_lookup
-        }
+        FuzzyMap { set, map }
     }
 
-    pub fn get_first_name_matches(&self, first_name: &str) -> Vec<&'a Person> {
-        self.get_matches(&self.first_name_fuzzy, &self.first_name_lookup, &sanatize_name(first_name), 2)
-    }
-
-    pub fn get_last_name_matches(&self, last_name: &str) -> Vec<&'a Person> {
-        self.get_matches(&self.last_name_fuzzy, &self.last_name_lookup, &sanatize_name(last_name), 2)
-    }
-
-    pub fn get_companies_matches(&self, company: &str) -> Vec<&'a Person> {
-        self.get_matches(&self.company_fuzzy, &self.company_lookup, &sanatize_company(company), 2)
-    }
-
-    pub fn get_phone_numbers_matches(&self, phone_number: &str) -> Vec<&'a Person> {
-        self.get_matches(&self.phone_fuzzy, &self.phone_lookup, &sanatize_phone(phone_number), 2)
-    }
-
-    // it seems that any distance over 2 causes errors with the fst engine
-    fn get_matches(&self, set: &Set, map: &HashMap<String, Vec<&'a Person>>, item: &str, distance: u32) -> Vec<&'a Person> {
+    // a distance of more than 2 seems to break things
+    pub fn get_matches(&self, item: &str, distance: u32) -> Vec<&'a T> {
         let mut result = Vec::new();
 
         if item.is_empty() {
@@ -127,18 +28,62 @@ impl<'a> SearchableList<'a> {
         }
 
         let lev = Levenshtein::new(item, distance).unwrap();
-        let stream = set.search(lev).into_stream();
+
+        let stream = self.set.search(lev).into_stream();
 
         let raw_names = stream.into_strs().unwrap();
 
         for name in raw_names.into_iter() {
-            let people = map.get(&name).unwrap();
-            for person in people {
-                result.push(*person);
+            let entries = self.map.get(&name).unwrap();
+            for entry in entries {
+                result.push(*entry);
             }
         }
 
         result
+    }
+}
+
+pub struct SearchableList<'a> {
+    fuzzy_data_per_column: Vec<FuzzyMap<'a, Entry>>
+}
+
+
+impl<'a> SearchableList<'a> {
+    pub fn new(csv_data: &'a CsvData) -> SearchableList<'a> {
+        let mut map_per_column_list = Vec::new();
+        for _ in &csv_data.headers {
+            map_per_column_list.push(BTreeMap::new());
+        }
+
+        for entry in &csv_data.entries {
+            for (mut map, col_item) in map_per_column_list.iter_mut().zip(entry.row.iter()) {
+                let key = sanatize(col_item);
+                if !key.is_empty() {
+                    let mut list = map.entry(key).or_insert(Vec::new());
+                    list.push(entry);
+                }
+            }
+        }
+
+        SearchableList {
+            fuzzy_data_per_column: map_per_column_list.into_iter().map(|tree| FuzzyMap::new(tree)).collect()
+        }
+    }
+
+    pub fn get_entry_matches(&self, entry: &Entry) -> Vec<&'a Entry> {
+        let mut matches = Vec::new();
+
+        for (fuzz_map, col_item) in self.fuzzy_data_per_column.iter().zip(entry.row.iter()) {
+            let key = sanatize(col_item);
+
+            // TODO: In future, actually make distance configurable,
+            // all callers just hardcode 2 right now
+            let results = fuzz_map.get_matches(&key, 2);
+            matches.extend_from_slice(&results);
+        }
+
+        matches
     }
 }
 
@@ -153,14 +98,6 @@ fn truncate(input: &str) -> &str {
     &input[0..max_len]
 }
 
-fn sanatize_name(name: &str) -> String {
+fn sanatize(name: &str) -> String {
     RE_SANATIZE.replace_all(truncate(name), "").to_lowercase()
-}
-
-fn sanatize_company(company: &str) -> String {
-    RE_SANATIZE.replace_all(truncate(company), "").to_lowercase()
-}
-
-fn sanatize_phone(phone: &str) -> String {
-    RE_SANATIZE.replace_all(truncate(phone), "").to_lowercase()
 }

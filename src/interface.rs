@@ -6,7 +6,7 @@ use models::DedupeTask;
 const LINE_CLEAR: &'static [u8] = b"\r                                                                 ";
 
 pub fn read_user_input() -> DedupeTask {
-    let user_args = env::args().skip(1).collect::<Vec<String>>();
+    let user_args = env::args().skip(1);
     handle_args(user_args)
 }
 
@@ -29,14 +29,18 @@ pub fn display_execution_progress(cur_item: usize, total_count: usize) {
     io::stdout().write(&msg.into_bytes()).unwrap();
 }
 
-fn handle_args(user_args: Vec<String>) -> DedupeTask {
-    match user_args.len() {
-        0 => {
+fn handle_args<T>(mut user_args: T) -> DedupeTask where T: Iterator<Item=String> {
+    let first = user_args.next();
+    let second = user_args.next();
+    let nth = user_args.next();
+
+    match (first, second, nth) {
+        (None, ..) => {
             handle_no_args();
             exit(0);
         },
-        1 => handle_single_file(&user_args[0]),
-        2 => handle_two_files(&user_args[0], &user_args[1]),
+        (Some(file), None, None) => handle_single_file(file),
+        (Some(file1), Some(file2), None) => handle_two_files(file1, file2),
         _ => {
             handle_too_many_inputs();
             exit(1);
@@ -50,16 +54,19 @@ fn handle_no_args() {
     println!("");
     println!("This program can do the following:");
     println!("1. Flag duplicates on a single csv file");
-    println!("2. Given a base csv file, flag duplicates a second csv file ");
+    println!("2. Given a base csv file, flag duplicates in a second csv file,");
+    println!("   keeping in mind that the files must have the same amount of columns");
     println!("");
-    println!("In order to use, please run the program followed by the name of one or two files");
-    println!("Ex: dedupe random-base-file.csv random-second-file.csv");
+    println!("Examples:");
     println!("");
-    println!("The csv files should contain columns in the following order:");
-    println!("Last Name | First Name | Company | Phone Number");
+    println!("Single File Example:");
+    println!("dedupe random-base-file.csv");
+    println!("");
+    println!("Multi File Example:");    
+    println!("dedupe random-base-file.csv random-second-file.csv");
 }
 
-fn handle_single_file(file: &str) -> DedupeTask {
+fn handle_single_file(file: String) -> DedupeTask {
     println!("You have chosen to flag duplicates on a single file:");
     println!("{}", file);
     println!("");
@@ -67,10 +74,10 @@ fn handle_single_file(file: &str) -> DedupeTask {
 
     assert_user_continue();
 
-    DedupeTask::SingleFile(file.to_owned())
+    DedupeTask::SingleFile(file)
 }
 
-fn handle_two_files(base_file: &str, comparison_file: &str) -> DedupeTask {
+fn handle_two_files(base_file: String, comparison_file: String) -> DedupeTask {
     println!("You have chosen to flag duplicates on a comparison file:");
     println!("The base file is {}", base_file);
     println!("The file to flag duplicates on is {}", comparison_file);
@@ -78,7 +85,7 @@ fn handle_two_files(base_file: &str, comparison_file: &str) -> DedupeTask {
 
     assert_user_continue();
 
-    DedupeTask::FileComparison(base_file.to_owned(), comparison_file.to_owned())
+    DedupeTask::FileComparison(base_file, comparison_file)
 }
 
 fn handle_too_many_inputs() {

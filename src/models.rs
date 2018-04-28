@@ -1,12 +1,17 @@
+#[derive(Debug)]
 pub enum DedupeTask {
     SingleFile(String),
     FileComparison(String, String)
 }
 
-pub struct Person {
+#[derive(Debug)]
+pub struct Entry {
     pub id: u64,
-    pub first_name: Option<String>,
-    pub last_name: Option<String>,
-    pub company: Option<String>,
-    pub phone_number: Option<String>,
+    pub row: Vec<String>
+}
+
+#[derive(Debug)]
+pub struct CsvData {
+    pub headers: Vec<String>,
+    pub entries: Vec<Entry>
 }

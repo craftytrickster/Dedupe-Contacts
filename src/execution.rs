@@ -1,81 +1,67 @@
-use models::{DedupeTask, Person};
+use models::{DedupeTask, Entry, CsvData};
 use std::collections::{HashSet, HashMap};
 use searchable::SearchableList;
 use file::FileUtil;
 use interface::display_execution_progress;
+use std::error::Error;
 
-pub fn run(task: DedupeTask) -> String {
+pub fn run(task: DedupeTask) -> Result<String, Box<Error>> {
     let mut file_util = FileUtil::new();
 
     match task {
         DedupeTask::SingleFile(file) => {
-            let single_list = file_util.file_to_list(&file);
-            let searchable_base = SearchableList::new(&single_list);
+            let file_data = file_util.file_to_data(&file)?;
+            let searchable_base = SearchableList::new(&file_data);
 
-            let duplicate_ids = get_duplicate_ids_against_base(&searchable_base, &single_list);
-            file_util.write_to_disk(&file, &single_list, duplicate_ids)
+            let duplicate_ids = get_duplicate_ids_against_base(&searchable_base, &file_data);
+            file_util.write_to_disk(&file, &file_data, duplicate_ids)
         },
         DedupeTask::FileComparison(base_file, comparison_file) => {
-            let base_list = file_util.file_to_list(&base_file);
-            let searchable_base = SearchableList::new(&base_list);
-            let comparison_list = file_util.file_to_list(&comparison_file);
+            let base_data = file_util.file_to_data(&base_file)?;
+            let searchable_base = SearchableList::new(&base_data);
+            let comparison_data = file_util.file_to_data(&comparison_file)?;
 
-            let duplicate_ids = get_duplicate_ids_against_base(&searchable_base, &comparison_list);
-            file_util.write_to_disk(&comparison_file, &comparison_list, duplicate_ids)
+            if base_data.headers.len() != comparison_data.headers.len() {
+                panic!("The two specified csv files must have the same amount of columns");
+            }
+
+            let duplicate_ids = get_duplicate_ids_against_base(&searchable_base, &comparison_data);
+            file_util.write_to_disk(&comparison_file, &comparison_data, duplicate_ids)
         }
     }
 }
 
 // go through items, if there are at least two field matches, then flag as possible duplicate
-fn get_duplicate_ids_against_base<'a>(searchable_base: &SearchableList<'a>, comparison_list: &Vec<Person>) -> HashMap<u64, Vec<&'a Person>> {
+// unless there is only one column, in which case, we only need one match
+fn get_duplicate_ids_against_base<'a>(searchable_base: &'a SearchableList<'a>, comparison_data: &CsvData) -> HashMap<u64, Vec<&'a Entry>> {
     let mut confirmed_duplicates = HashMap::new();
 
-    for (i, person) in comparison_list.iter().enumerate() {
-        display_execution_progress(i, comparison_list.len());
+    let total = comparison_data.entries.len();
+    let single_column = comparison_data.headers.len() == 1;
 
-        let mut matches = Vec::new();
+    for (i, entry) in comparison_data.entries.iter().enumerate() {
+        display_execution_progress(i, total);
 
-        if let Some(ref first_name) = person.first_name {
-            let results = searchable_base.get_first_name_matches(first_name);
-            matches.extend_from_slice(&results);
-        }
-
-        if let Some(ref last_name) = person.last_name {
-            let results = searchable_base.get_last_name_matches(last_name);
-            matches.extend_from_slice(&results);
-        }
-
-        if let Some(ref company) = person.company {
-            let results = searchable_base.get_companies_matches(company);
-            matches.extend_from_slice(&results);
-        }
-
-        if let Some(ref phone_number) = person.phone_number {
-            let results = searchable_base.get_phone_numbers_matches(phone_number);
-            matches.extend_from_slice(&results);
-        }
+        let matches = searchable_base.get_entry_matches(entry);
 
         let mut id_matches = HashSet::new();
         let mut already_added_duplicates = HashSet::new();
-        for matched_person in matches.into_iter() {
-            if matched_person.id == person.id {
-                // we do not care about the person matching themselves
+        for matched_entry in matches.into_iter() {
+            if matched_entry.id == entry.id {
+                // we do not care about the entry matching themselves
                 continue;
             }
 
-            if id_matches.contains(&matched_person.id) {
-                if !confirmed_duplicates.contains_key(&person.id) {
-                    confirmed_duplicates.insert(person.id, Vec::new());
+            if single_column || id_matches.contains(&matched_entry.id) {
+                if single_column || !already_added_duplicates.contains(&matched_entry.id) {
+                    let mut confirmed_list = confirmed_duplicates.entry(entry.id).or_insert(Vec::new());
+                    confirmed_list.push(matched_entry);
                 }
 
-                if !already_added_duplicates.contains(&matched_person.id) {
-                    confirmed_duplicates.get_mut(&person.id).unwrap().push(matched_person);
-                }
-
-                already_added_duplicates.insert(matched_person.id);
+                already_added_duplicates.insert(matched_entry.id);
             }
 
-            id_matches.insert(matched_person.id);
+            id_matches.insert(matched_entry.id);
         }
     }
     confirmed_duplicates
