@@ -32,10 +32,12 @@ pub fn run(task: DedupeTask) -> Result<String, Box<Error>> {
 }
 
 // go through items, if there are at least two field matches, then flag as possible duplicate
+// unless there is only one column, in which case, we only need one match
 fn get_duplicate_ids_against_base<'a>(searchable_base: &'a SearchableList<'a>, comparison_data: &CsvData) -> HashMap<u64, Vec<&'a Entry>> {
     let mut confirmed_duplicates = HashMap::new();
 
     let total = comparison_data.entries.len();
+    let single_column = comparison_data.headers.len() == 1;
 
     for (i, entry) in comparison_data.entries.iter().enumerate() {
         display_execution_progress(i, total);
@@ -50,13 +52,10 @@ fn get_duplicate_ids_against_base<'a>(searchable_base: &'a SearchableList<'a>, c
                 continue;
             }
 
-            if id_matches.contains(&matched_entry.id) {
-                if !confirmed_duplicates.contains_key(&entry.id) {
-                    confirmed_duplicates.insert(entry.id, Vec::new());
-                }
-
-                if !already_added_duplicates.contains(&matched_entry.id) {
-                    confirmed_duplicates.get_mut(&entry.id).unwrap().push(matched_entry);
+            if single_column || id_matches.contains(&matched_entry.id) {
+                if single_column || !already_added_duplicates.contains(&matched_entry.id) {
+                    let mut confirmed_list = confirmed_duplicates.entry(entry.id).or_insert(Vec::new());
+                    confirmed_list.push(matched_entry);
                 }
 
                 already_added_duplicates.insert(matched_entry.id);

@@ -84,13 +84,19 @@ fn get_duplicate_string<'a>(id: &u64, duplicate_ids: &HashMap<u64, Vec<&'a Entry
                 return result;
             }
 
-            let first = &entry.row[0];
-            let second = &entry.row[1];
+            if entry.row.len() == 1 {
+                let first = &entry.row[0];
 
-            result.push_str(&format!("{}, {} | ", first, second));
+                result.push_str(&format!("{} | ", first));
+            } else {
+                let first = &entry.row[0];
+                let second = &entry.row[1];
+
+                result.push_str(&format!("{}, {} | ", first, second));
+            }
         }
-
-        // remove trailing chars
+        
+        // remove trailing chars " | "
         result.pop();
         result.pop();
         result.pop();
