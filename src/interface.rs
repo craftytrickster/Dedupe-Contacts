@@ -35,7 +35,7 @@ fn handle_args<T>(mut user_args: T) -> DedupeTask where T: Iterator<Item=String>
     let nth = user_args.next();
 
     match (first, second, nth) {
-        (None, _, _) => {
+        (None, ..) => {
             handle_no_args();
             exit(0);
         },
@@ -54,13 +54,16 @@ fn handle_no_args() {
     println!("");
     println!("This program can do the following:");
     println!("1. Flag duplicates on a single csv file");
-    println!("2. Given a base csv file, flag duplicates a second csv file ");
+    println!("2. Given a base csv file, flag duplicates in a second csv file,");
+    println!("   keeping in mind that the files must have the same amount of columns");
     println!("");
-    println!("In order to use, please run the program followed by the name of one or two files");
-    println!("Ex: dedupe random-base-file.csv random-second-file.csv");
+    println!("Examples:");
     println!("");
-    println!("The csv files should contain columns in the following order:");
-    println!("Last Name | First Name | Company | Phone Number");
+    println!("Single File Example:");
+    println!("dedupe random-base-file.csv");
+    println!("");
+    println!("Multi File Example:");    
+    println!("dedupe random-base-file.csv random-second-file.csv");
 }
 
 fn handle_single_file(file: String) -> DedupeTask {

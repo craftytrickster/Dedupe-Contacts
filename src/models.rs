@@ -1,4 +1,3 @@
-// TODO: add # cols and distance
 pub enum DedupeTask {
     SingleFile(String),
     FileComparison(String, String)

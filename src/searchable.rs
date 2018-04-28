@@ -17,6 +17,9 @@ impl<'a, T> FuzzyMap<'a, T> {
         FuzzyMap { set, hashmap }
     }
 
+    // TODO: In future, actually make distance configurable,
+    // all callers just hardcode 2 right now
+    
     // a distance of more than 2 seems to break things
     pub fn get_matches(&self, item: &str, distance: u32) -> Vec<&'a T> {
         let mut result = Vec::new();

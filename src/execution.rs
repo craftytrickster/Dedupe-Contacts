@@ -21,6 +21,10 @@ pub fn run(task: DedupeTask) -> Result<String, Box<Error>> {
             let searchable_base = SearchableList::new(&base_data.entries);
             let comparison_data = file_util.file_to_data(&comparison_file)?;
 
+            if base_data.headers.len() != comparison_data.headers.len() {
+                panic!("The two specified csv files must have the same amount of columns");
+            }
+
             let duplicate_ids = get_duplicate_ids_against_base(&searchable_base, &comparison_data);
             file_util.write_to_disk(&comparison_file, &comparison_data, duplicate_ids)
         }
