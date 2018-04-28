@@ -28,7 +28,7 @@ pub fn run(task: DedupeTask) -> Result<String, Box<Error>> {
 }
 
 // go through items, if there are at least two field matches, then flag as possible duplicate
-fn get_duplicate_ids_against_base<'a>(searchable_base: &SearchableList<'a>, comparison_list: &Vec<Person>) -> HashMap<u64, Vec<&'a Person>> {
+fn get_duplicate_ids_against_base<'a>(searchable_base: &'a SearchableList<'a>, comparison_list: &Vec<Person>) -> HashMap<u64, Vec<&'a Person>> {
     let mut confirmed_duplicates = HashMap::new();
 
     for (i, person) in comparison_list.iter().enumerate() {
