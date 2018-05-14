@@ -11,10 +11,6 @@ This program is used to find and mark duplicate contacts inside spreadsheets (cs
 In order protect the integrity of the input files, the
 program will output the marked results to a new file.
 
-### Spreadsheet columns must be in the following order:
-
-**Last Name, First Name, Company, Phone Number**
-
 
 ### About
 
