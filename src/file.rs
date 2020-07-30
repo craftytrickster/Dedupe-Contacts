@@ -1,10 +1,10 @@
-use crate::models::{Entry, CsvData};
+use crate::models::{CsvData, Entry};
+use csv::{Reader, Writer};
 use std::collections::HashMap;
 use std::error::Error;
-use csv::{Reader, Writer};
 
 pub struct FileUtil {
-    last_id_created: u64
+    last_id_created: u64,
 }
 
 impl FileUtil {
@@ -28,32 +28,30 @@ impl FileUtil {
 
                 let entry = Entry {
                     id: self.last_id_created,
-                    row
+                    row,
                 };
 
                 entries.push(entry);
             }
         }
 
-        Ok(CsvData {
-            headers,
-            entries
-        })
+        Ok(CsvData { headers, entries })
     }
 
     pub fn write_to_disk<'a>(
         &self,
         file: &str,
         data: &'a CsvData,
-        duplicate_ids: HashMap<u64, Vec<&'a Entry>>
+        duplicate_ids: HashMap<u64, Vec<&'a Entry>>,
     ) -> Result<String, Box<dyn Error>> {
-
         let mut new_file: String = {
             if file.ends_with(".csv") {
                 &file[0..file.len() - 4] // truncate csv
+            } else {
+                file
             }
-            else { file }
-        }.to_owned();
+        }
+        .to_owned();
 
         new_file.push_str("-DUPLICATE-FLAG.csv");
 
@@ -79,7 +77,8 @@ fn get_duplicate_string<'a>(id: &u64, duplicate_ids: &HashMap<u64, Vec<&'a Entry
 
     if let Some(matches) = duplicate_ids.get(id) {
         for (i, entry) in matches.iter().enumerate() {
-            if i > 5 { // after displaying several matches, no need to show all
+            if i > 5 {
+                // after displaying several matches, no need to show all
                 result.push_str(&format!("and {} more ...", matches.len() - i));
                 return result;
             }
@@ -95,7 +94,7 @@ fn get_duplicate_string<'a>(id: &u64, duplicate_ids: &HashMap<u64, Vec<&'a Entry
                 result.push_str(&format!("{}, {} | ", first, second));
             }
         }
-        
+
         // remove trailing chars " | "
         result.pop();
         result.pop();

@@ -1,11 +1,11 @@
 #[macro_use]
 extern crate lazy_static;
 
+mod execution;
+mod file;
 mod interface;
 mod models;
-mod execution;
 mod searchable;
-mod file;
 
 fn main() {
     let task = interface::read_user_input();

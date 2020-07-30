@@ -1,7 +1,7 @@
-use std::process::exit;
+use crate::models::DedupeTask;
 use std::env;
 use std::io::{self, Write};
-use crate::models::DedupeTask;
+use std::process::exit;
 
 const LINE_CLEAR: &[u8] = b"\r                                                                 ";
 
@@ -11,13 +11,18 @@ pub fn read_user_input() -> DedupeTask {
 }
 
 pub fn confirm_success(file_name: &str) {
-    println!("Dedupe has generated the following for your viewing pleasure: {}", file_name);
+    println!(
+        "Dedupe has generated the following for your viewing pleasure: {}",
+        file_name
+    );
 }
 
 pub fn display_execution_progress(cur_item: usize, total_count: usize) {
     if cur_item == total_count - 1 {
         io::stdout().write_all(LINE_CLEAR).unwrap();
-        io::stdout().write_all(b"\rDuplicate Processing has been completed.").unwrap();
+        io::stdout()
+            .write_all(b"\rDuplicate Processing has been completed.")
+            .unwrap();
         println!();
         println!();
         return;
@@ -29,7 +34,10 @@ pub fn display_execution_progress(cur_item: usize, total_count: usize) {
     io::stdout().write_all(&msg.into_bytes()).unwrap();
 }
 
-fn handle_args<T>(mut user_args: T) -> DedupeTask where T: Iterator<Item=String> {
+fn handle_args<T>(mut user_args: T) -> DedupeTask
+where
+    T: Iterator<Item = String>,
+{
     let first = user_args.next();
     let second = user_args.next();
     let nth = user_args.next();
@@ -38,7 +46,7 @@ fn handle_args<T>(mut user_args: T) -> DedupeTask where T: Iterator<Item=String>
         (None, ..) => {
             handle_no_args();
             exit(0);
-        },
+        }
         (Some(file), None, None) => handle_single_file(file),
         (Some(file1), Some(file2), None) => handle_two_files(file1, file2),
         _ => {
@@ -62,7 +70,7 @@ fn handle_no_args() {
     println!("Single File Example:");
     println!("dedupe random-base-file.csv");
     println!();
-    println!("Multi File Example:");    
+    println!("Multi File Example:");
     println!("dedupe random-base-file.csv random-second-file.csv");
 }
 
