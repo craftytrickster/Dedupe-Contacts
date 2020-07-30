@@ -1,9 +1,9 @@
 use std::process::exit;
 use std::env;
 use std::io::{self, Write};
-use models::DedupeTask;
+use crate::models::DedupeTask;
 
-const LINE_CLEAR: &'static [u8] = b"\r                                                                 ";
+const LINE_CLEAR: &[u8] = b"\r                                                                 ";
 
 pub fn read_user_input() -> DedupeTask {
     let user_args = env::args().skip(1);
@@ -16,17 +16,17 @@ pub fn confirm_success(file_name: &str) {
 
 pub fn display_execution_progress(cur_item: usize, total_count: usize) {
     if cur_item == total_count - 1 {
-        io::stdout().write(LINE_CLEAR).unwrap();
-        io::stdout().write(b"\rDuplicate Processing has been completed.").unwrap();
-        println!("");
-        println!("");
+        io::stdout().write_all(LINE_CLEAR).unwrap();
+        io::stdout().write_all(b"\rDuplicate Processing has been completed.").unwrap();
+        println!();
+        println!();
         return;
     }
 
     let progress = format!("{:.*}", 2, (cur_item as f64 / total_count as f64) * 100.0);
     let msg = format!("\rCurrent progress of Duplicate Processing: {}%", progress);
 
-    io::stdout().write(&msg.into_bytes()).unwrap();
+    io::stdout().write_all(&msg.into_bytes()).unwrap();
 }
 
 fn handle_args<T>(mut user_args: T) -> DedupeTask where T: Iterator<Item=String> {
@@ -51,17 +51,17 @@ fn handle_args<T>(mut user_args: T) -> DedupeTask where T: Iterator<Item=String>
 fn handle_no_args() {
     println!("Welcome to \"Magic Dedupe\"");
     println!("*************************");
-    println!("");
+    println!();
     println!("This program can do the following:");
     println!("1. Flag duplicates on a single csv file");
     println!("2. Given a base csv file, flag duplicates in a second csv file,");
     println!("   keeping in mind that the files must have the same amount of columns");
-    println!("");
+    println!();
     println!("Examples:");
-    println!("");
+    println!();
     println!("Single File Example:");
     println!("dedupe random-base-file.csv");
-    println!("");
+    println!();
     println!("Multi File Example:");    
     println!("dedupe random-base-file.csv random-second-file.csv");
 }
@@ -69,7 +69,7 @@ fn handle_no_args() {
 fn handle_single_file(file: String) -> DedupeTask {
     println!("You have chosen to flag duplicates on a single file:");
     println!("{}", file);
-    println!("");
+    println!();
     println!("If this is correct, please enter (y)es to continue");
 
     assert_user_continue();

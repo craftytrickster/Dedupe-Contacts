@@ -1,11 +1,11 @@
-use models::{DedupeTask, Entry, CsvData};
+use crate::models::{DedupeTask, Entry, CsvData};
 use std::collections::{HashSet, HashMap};
-use searchable::SearchableList;
-use file::FileUtil;
-use interface::display_execution_progress;
+use crate::searchable::SearchableList;
+use crate::file::FileUtil;
+use crate::interface::display_execution_progress;
 use std::error::Error;
 
-pub fn run(task: DedupeTask) -> Result<String, Box<Error>> {
+pub fn run(task: DedupeTask) -> Result<String, Box<dyn Error>> {
     let mut file_util = FileUtil::new();
 
     match task {
@@ -54,7 +54,7 @@ fn get_duplicate_ids_against_base<'a>(searchable_base: &'a SearchableList<'a>, c
 
             if single_column || id_matches.contains(&matched_entry.id) {
                 if single_column || !already_added_duplicates.contains(&matched_entry.id) {
-                    let mut confirmed_list = confirmed_duplicates.entry(entry.id).or_insert(Vec::new());
+                    let confirmed_list = confirmed_duplicates.entry(entry.id).or_insert_with(Vec::new);
                     confirmed_list.push(matched_entry);
                 }
 

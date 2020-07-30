@@ -1,4 +1,4 @@
-use models::{Entry, CsvData};
+use crate::models::{Entry, CsvData};
 use std::collections::HashMap;
 use std::error::Error;
 use csv::{Reader, Writer};
@@ -12,7 +12,7 @@ impl FileUtil {
         FileUtil { last_id_created: 0 }
     }
 
-    pub fn file_to_data(&mut self, file: &str) -> Result<CsvData, Box<Error>> {
+    pub fn file_to_data(&mut self, file: &str) -> Result<CsvData, Box<dyn Error>> {
         let mut entries = Vec::new();
 
         let mut rdr = Reader::from_file(file)?;
@@ -46,7 +46,7 @@ impl FileUtil {
         file: &str,
         data: &'a CsvData,
         duplicate_ids: HashMap<u64, Vec<&'a Entry>>
-    ) -> Result<String, Box<Error>> {
+    ) -> Result<String, Box<dyn Error>> {
 
         let mut new_file: String = {
             if file.ends_with(".csv") {

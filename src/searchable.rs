@@ -1,4 +1,4 @@
-use models::{CsvData, Entry};
+use crate::models::{CsvData, Entry};
 use fst::{Set, IntoStreamer};
 use fst_levenshtein::Levenshtein;
 use regex::Regex;
@@ -57,17 +57,17 @@ impl<'a> SearchableList<'a> {
         }
 
         for entry in &csv_data.entries {
-            for (mut map, col_item) in map_per_column_list.iter_mut().zip(entry.row.iter()) {
+            for (map, col_item) in map_per_column_list.iter_mut().zip(entry.row.iter()) {
                 let key = sanatize(col_item);
                 if !key.is_empty() {
-                    let mut list = map.entry(key).or_insert(Vec::new());
+                    let list = map.entry(key).or_insert_with(Vec::new);
                     list.push(entry);
                 }
             }
         }
 
         SearchableList {
-            fuzzy_data_per_column: map_per_column_list.into_iter().map(|tree| FuzzyMap::new(tree)).collect()
+            fuzzy_data_per_column: map_per_column_list.into_iter().map(FuzzyMap::new).collect()
         }
     }
 
