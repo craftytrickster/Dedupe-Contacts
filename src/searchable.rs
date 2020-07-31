@@ -1,5 +1,5 @@
-use models::{CsvData, Entry};
-use fst::{Set, IntoStreamer};
+use crate::models::{CsvData, Entry};
+use fst::{IntoStreamer, Set};
 use fst_levenshtein::Levenshtein;
 use regex::Regex;
 use std::collections::BTreeMap;
@@ -9,7 +9,7 @@ use std::collections::BTreeMap;
 // Needed because fst does not support duplicate entries
 pub struct FuzzyMap<'a, T: 'a> {
     set: Set,
-    map: BTreeMap<String, Vec<&'a T>>
+    map: BTreeMap<String, Vec<&'a T>>,
 }
 
 impl<'a, T> FuzzyMap<'a, T> {
@@ -45,9 +45,8 @@ impl<'a, T> FuzzyMap<'a, T> {
 }
 
 pub struct SearchableList<'a> {
-    fuzzy_data_per_column: Vec<FuzzyMap<'a, Entry>>
+    fuzzy_data_per_column: Vec<FuzzyMap<'a, Entry>>,
 }
-
 
 impl<'a> SearchableList<'a> {
     pub fn new(csv_data: &'a CsvData) -> SearchableList<'a> {
@@ -57,17 +56,17 @@ impl<'a> SearchableList<'a> {
         }
 
         for entry in &csv_data.entries {
-            for (mut map, col_item) in map_per_column_list.iter_mut().zip(entry.row.iter()) {
+            for (map, col_item) in map_per_column_list.iter_mut().zip(entry.row.iter()) {
                 let key = sanatize(col_item);
                 if !key.is_empty() {
-                    let mut list = map.entry(key).or_insert(Vec::new());
+                    let list = map.entry(key).or_insert_with(Vec::new);
                     list.push(entry);
                 }
             }
         }
 
         SearchableList {
-            fuzzy_data_per_column: map_per_column_list.into_iter().map(|tree| FuzzyMap::new(tree)).collect()
+            fuzzy_data_per_column: map_per_column_list.into_iter().map(FuzzyMap::new).collect(),
         }
     }
 

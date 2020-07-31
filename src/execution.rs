@@ -1,11 +1,11 @@
-use models::{DedupeTask, Entry, CsvData};
-use std::collections::{HashSet, HashMap};
-use searchable::SearchableList;
-use file::FileUtil;
-use interface::display_execution_progress;
+use crate::file::FileUtil;
+use crate::interface::display_execution_progress;
+use crate::models::{CsvData, DedupeTask, Entry};
+use crate::searchable::SearchableList;
+use std::collections::{HashMap, HashSet};
 use std::error::Error;
 
-pub fn run(task: DedupeTask) -> Result<String, Box<Error>> {
+pub fn run(task: DedupeTask) -> Result<String, Box<dyn Error>> {
     let mut file_util = FileUtil::new();
 
     match task {
@@ -15,7 +15,7 @@ pub fn run(task: DedupeTask) -> Result<String, Box<Error>> {
 
             let duplicate_ids = get_duplicate_ids_against_base(&searchable_base, &file_data);
             file_util.write_to_disk(&file, &file_data, duplicate_ids)
-        },
+        }
         DedupeTask::FileComparison(base_file, comparison_file) => {
             let base_data = file_util.file_to_data(&base_file)?;
             let searchable_base = SearchableList::new(&base_data);
@@ -33,7 +33,10 @@ pub fn run(task: DedupeTask) -> Result<String, Box<Error>> {
 
 // go through items, if there are at least two field matches, then flag as possible duplicate
 // unless there is only one column, in which case, we only need one match
-fn get_duplicate_ids_against_base<'a>(searchable_base: &'a SearchableList<'a>, comparison_data: &CsvData) -> HashMap<u64, Vec<&'a Entry>> {
+fn get_duplicate_ids_against_base<'a>(
+    searchable_base: &'a SearchableList<'a>,
+    comparison_data: &CsvData,
+) -> HashMap<u64, Vec<&'a Entry>> {
     let mut confirmed_duplicates = HashMap::new();
 
     let total = comparison_data.entries.len();
@@ -54,7 +57,9 @@ fn get_duplicate_ids_against_base<'a>(searchable_base: &'a SearchableList<'a>, c
 
             if single_column || id_matches.contains(&matched_entry.id) {
                 if single_column || !already_added_duplicates.contains(&matched_entry.id) {
-                    let mut confirmed_list = confirmed_duplicates.entry(entry.id).or_insert(Vec::new());
+                    let confirmed_list = confirmed_duplicates
+                        .entry(entry.id)
+                        .or_insert_with(Vec::new);
                     confirmed_list.push(matched_entry);
                 }
 
