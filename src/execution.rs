@@ -45,7 +45,7 @@ fn get_duplicate_ids_against_base(
     for (i, entry) in comparison_data.entries.iter().enumerate() {
         display_execution_progress(i, total);
 
-        let matches = searchable_base.find_matches(&entry.location, 0.0);
+        let matches = searchable_base.find_matches(&entry.location, 0.0007);
         if !matches.is_empty() {
             if matches.len() == 1 && Rc::ptr_eq(&matches[0], entry) {
                 // we do not care about the entry matching themselves

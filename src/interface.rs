@@ -60,6 +60,9 @@ fn handle_no_args() {
     println!("Welcome to \"Magic Dedupe\"");
     println!("*************************");
     println!();
+    println!("This program will only work if your csv file has two specific columns:");
+    println!("latitude and longitude");
+    println!();
     println!("This program can do the following:");
     println!("1. Flag duplicates on a single csv file");
     println!("2. Given a base csv file, flag duplicates in a second csv file,");

@@ -33,8 +33,25 @@ impl FileUtil {
                 let record: Vec<Option<String>> = record;
                 let row: Vec<String> = record.into_iter().map(|x| x.unwrap_or_default()).collect();
 
-                let latitude = row[latitude_idx].parse().unwrap();
-                let longitude = row[longitude_idx].parse().unwrap();
+                let latitude_str = &row[latitude_idx];
+
+                let latitude = if latitude_str.trim().is_empty() {
+                    0f64
+                } else {
+                    latitude_str
+                        .parse()
+                        .expect(&format!("Error parsing latitude value: {}", latitude_str))
+                };
+
+                let longitude_str = &row[longitude_idx];
+
+                let longitude = if longitude_str.trim().is_empty() {
+                    0f64
+                } else {
+                    longitude_str
+                        .parse()
+                        .expect(&format!("Error parsing longitude value: {}", longitude_str))
+                };
 
                 let entry = Rc::new(Entry {
                     location: Location::new(latitude, longitude),

@@ -5,28 +5,6 @@ use std::rc::Rc;
 
 use std::cmp::Ordering;
 
-#[derive(Debug, Clone, Copy)]
-struct Decimal(f64);
-
-impl Ord for Decimal {
-    fn cmp(&self, other: &Self) -> Ordering {
-        self.0.partial_cmp(&other.0).unwrap()
-    }
-}
-
-impl PartialOrd for Decimal {
-    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        self.0.partial_cmp(&other.0)
-    }
-}
-
-impl PartialEq for Decimal {
-    fn eq(&self, other: &Self) -> bool {
-        self.0 == other.0
-    }
-}
-impl Eq for Decimal {}
-
 #[derive(Debug)]
 pub struct LocationMatcher {
     latitude_map: BTreeMap<Decimal, Vec<Rc<Entry>>>,
@@ -59,6 +37,11 @@ impl LocationMatcher {
     }
 
     pub fn find_matches(&self, location: &Location, acceptable_noise: f64) -> Vec<Rc<Entry>> {
+        // 0,0 is junk data, we should ignore it
+        if location.latitude == 0.0 && location.longitude == 0.0 {
+            return Vec::new();
+        }
+
         let start_lat = Decimal(location.latitude - acceptable_noise);
         let end_lat = Decimal(location.latitude + acceptable_noise);
 
@@ -99,3 +82,25 @@ impl LocationMatcher {
         result
     }
 }
+
+#[derive(Debug, Clone, Copy)]
+struct Decimal(f64);
+
+impl Ord for Decimal {
+    fn cmp(&self, other: &Self) -> Ordering {
+        self.0.partial_cmp(&other.0).unwrap()
+    }
+}
+
+impl PartialOrd for Decimal {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        self.0.partial_cmp(&other.0)
+    }
+}
+
+impl PartialEq for Decimal {
+    fn eq(&self, other: &Self) -> bool {
+        self.0 == other.0
+    }
+}
+impl Eq for Decimal {}
