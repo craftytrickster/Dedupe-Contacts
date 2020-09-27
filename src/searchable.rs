@@ -1,12 +1,7 @@
-use crate::models::{CsvData, Entry, Location};
-use fst::{IntoStreamer, Set};
-use fst_levenshtein::Levenshtein;
-use regex::Regex;
+use crate::models::{Entry, Location};
 
 use std::collections::{BTreeMap, HashSet};
 use std::rc::Rc;
-
-
 
 use std::cmp::Ordering;
 
@@ -33,15 +28,15 @@ impl PartialEq for Decimal {
 impl Eq for Decimal {}
 
 #[derive(Debug)]
-struct LocationMatcher {
+pub struct LocationMatcher {
     latitude_map: BTreeMap<Decimal, Vec<Rc<Entry>>>,
     longitude_map: BTreeMap<Decimal, Vec<Rc<Entry>>>,
 }
 
 impl LocationMatcher {
     pub fn new(payloads: &[Rc<Entry>]) -> Self {
-        let mut latitude_map: BTreeMap<Decimal, Vec<Rc<Payload>>> = BTreeMap::new();
-        let mut longitude_map: BTreeMap<Decimal, Vec<Rc<Payload>>> = BTreeMap::new();
+        let mut latitude_map: BTreeMap<Decimal, Vec<Rc<Entry>>> = BTreeMap::new();
+        let mut longitude_map: BTreeMap<Decimal, Vec<Rc<Entry>>> = BTreeMap::new();
 
         for item in payloads {
             let lats = latitude_map
@@ -76,9 +71,10 @@ impl LocationMatcher {
         let exact_lat = self.latitude_map.get_key_value(&Decimal(location.latitude));
         let exact_lat_iter = exact_lat.iter().copied();
 
-        let exact_long = self.longitude_map.get_key_value(&Decimal(location.longitude));
+        let exact_long = self
+            .longitude_map
+            .get_key_value(&Decimal(location.longitude));
         let exact_long_iter = exact_long.iter().copied();
-
 
         let mut items = HashSet::new();
 
@@ -100,15 +96,6 @@ impl LocationMatcher {
             }
         }
 
-
-
         result
     }
 }
-
-
-
-
-
-
-

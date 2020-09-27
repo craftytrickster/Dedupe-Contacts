@@ -24,7 +24,6 @@ pub struct CsvData {
     pub entries: Vec<Rc<Entry>>,
 }
 
-
 impl Location {
     pub fn new(latitude: f64, longitude: f64) -> Self {
         Location {

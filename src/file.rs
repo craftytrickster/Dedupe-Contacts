@@ -1,16 +1,14 @@
-use crate::models::{CsvData, Entry};
+use crate::models::{CsvData, Entry, Location};
 use csv::{Reader, Writer};
 use std::collections::HashMap;
 use std::error::Error;
 use std::rc::Rc;
 
-pub struct FileUtil {
-    last_id_created: u64,
-}
+pub struct FileUtil {}
 
 impl FileUtil {
     pub fn new() -> FileUtil {
-        FileUtil { last_id_created: 0 }
+        FileUtil {}
     }
 
     pub fn file_to_data(&mut self, file: &str) -> Result<CsvData, Box<dyn Error>> {
@@ -20,15 +18,26 @@ impl FileUtil {
 
         let headers: Vec<String> = rdr.headers()?;
 
+        let latitude_idx = headers
+            .iter()
+            .position(|h| h.eq_ignore_ascii_case("latitude"))
+            .expect("there must be a column header named latitude");
+
+        let longitude_idx = headers
+            .iter()
+            .position(|h| h.eq_ignore_ascii_case("longitude"))
+            .expect("there must be a column header named longitude");
+
         for record in rdr.decode() {
             if let Ok(record) = record {
                 let record: Vec<Option<String>> = record;
                 let row: Vec<String> = record.into_iter().map(|x| x.unwrap_or_default()).collect();
 
-                self.last_id_created += 1;
+                let latitude = row[latitude_idx].parse().unwrap();
+                let longitude = row[longitude_idx].parse().unwrap();
 
                 let entry = Rc::new(Entry {
-                    id: self.last_id_created,
+                    location: Location::new(latitude, longitude),
                     row,
                 });
 
@@ -43,7 +52,7 @@ impl FileUtil {
         &self,
         file: &str,
         data: &'a CsvData,
-        duplicate_ids: HashMap<u64, Vec<Rc<Entry>>>,
+        duplicate_ids: HashMap<usize, Vec<Rc<Entry>>>,
     ) -> Result<String, Box<dyn Error>> {
         let mut new_file: String = {
             if file.ends_with(".csv") {
@@ -62,8 +71,8 @@ impl FileUtil {
 
         writer.encode(&new_headers)?;
 
-        for entry in &data.entries {
-            let duplicate_string = get_duplicate_string(&entry.id, &duplicate_ids);
+        for (idx, entry) in data.entries.iter().enumerate() {
+            let duplicate_string = get_duplicate_string(idx, &duplicate_ids);
             let mut data = entry.row.clone();
             data.push(duplicate_string);
             writer.encode(&data)?;
@@ -73,10 +82,10 @@ impl FileUtil {
     }
 }
 
-fn get_duplicate_string<'a>(id: &u64, duplicate_ids: &HashMap<u64, Vec<Rc<Entry>>>) -> String {
+fn get_duplicate_string(id: usize, duplicate_ids: &HashMap<usize, Vec<Rc<Entry>>>) -> String {
     let mut result = String::new();
 
-    if let Some(matches) = duplicate_ids.get(id) {
+    if let Some(matches) = duplicate_ids.get(&id) {
         for (i, entry) in matches.iter().enumerate() {
             if i > 5 {
                 // after displaying several matches, no need to show all
