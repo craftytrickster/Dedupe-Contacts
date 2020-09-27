@@ -1,102 +1,114 @@
-use crate::models::{CsvData, Entry};
+use crate::models::{CsvData, Entry, Location};
 use fst::{IntoStreamer, Set};
 use fst_levenshtein::Levenshtein;
 use regex::Regex;
-use std::collections::BTreeMap;
 
-// Uses the fst fuzzy string search in order to get possible value matches,
-// and then looks up name matches in name -> Person BTreeMaps
-// Needed because fst does not support duplicate entries
-pub struct FuzzyMap<'a, T: 'a> {
-    set: Set,
-    map: BTreeMap<String, Vec<&'a T>>,
+use std::collections::{BTreeMap, HashSet};
+use std::rc::Rc;
+
+
+
+use std::cmp::Ordering;
+
+#[derive(Debug, Clone, Copy)]
+struct Decimal(f64);
+
+impl Ord for Decimal {
+    fn cmp(&self, other: &Self) -> Ordering {
+        self.0.partial_cmp(&other.0).unwrap()
+    }
 }
 
-impl<'a, T> FuzzyMap<'a, T> {
-    pub fn new(map: BTreeMap<String, Vec<&'a T>>) -> Self {
-        let set = Set::from_iter(map.iter().map(|i| i.0)).unwrap();
+impl PartialOrd for Decimal {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        self.0.partial_cmp(&other.0)
+    }
+}
 
-        FuzzyMap { set, map }
+impl PartialEq for Decimal {
+    fn eq(&self, other: &Self) -> bool {
+        self.0 == other.0
+    }
+}
+impl Eq for Decimal {}
+
+#[derive(Debug)]
+struct LocationMatcher {
+    latitude_map: BTreeMap<Decimal, Vec<Rc<Entry>>>,
+    longitude_map: BTreeMap<Decimal, Vec<Rc<Entry>>>,
+}
+
+impl LocationMatcher {
+    pub fn new(payloads: &[Rc<Entry>]) -> Self {
+        let mut latitude_map: BTreeMap<Decimal, Vec<Rc<Payload>>> = BTreeMap::new();
+        let mut longitude_map: BTreeMap<Decimal, Vec<Rc<Payload>>> = BTreeMap::new();
+
+        for item in payloads {
+            let lats = latitude_map
+                .entry(Decimal(item.location.latitude))
+                .or_default();
+
+            lats.push(item.clone());
+
+            let longs = longitude_map
+                .entry(Decimal(item.location.longitude))
+                .or_default();
+
+            longs.push(item.clone());
+        }
+
+        LocationMatcher {
+            latitude_map,
+            longitude_map,
+        }
     }
 
-    // a distance of more than 2 seems to break things
-    pub fn get_matches(&self, item: &str, distance: u32) -> Vec<&'a T> {
-        let mut result = Vec::new();
+    pub fn find_matches(&self, location: &Location, acceptable_noise: f64) -> Vec<Rc<Entry>> {
+        let start_lat = Decimal(location.latitude - acceptable_noise);
+        let end_lat = Decimal(location.latitude + acceptable_noise);
 
-        if item.is_empty() {
-            return result;
-        }
+        let start_long = Decimal(location.longitude - acceptable_noise);
+        let end_long = Decimal(location.longitude + acceptable_noise);
 
-        let lev = Levenshtein::new(item, distance).unwrap();
+        let latitude_matches = self.latitude_map.range(start_lat..end_lat);
+        let longitude_matches = self.longitude_map.range(start_long..end_long);
 
-        let stream = self.set.search(lev).into_stream();
+        let exact_lat = self.latitude_map.get_key_value(&Decimal(location.latitude));
+        let exact_lat_iter = exact_lat.iter().copied();
 
-        let raw_names = stream.into_strs().unwrap();
+        let exact_long = self.longitude_map.get_key_value(&Decimal(location.longitude));
+        let exact_long_iter = exact_long.iter().copied();
 
-        for name in raw_names.into_iter() {
-            let entries = self.map.get(&name).unwrap();
-            for entry in entries {
-                result.push(*entry);
+
+        let mut items = HashSet::new();
+
+        for lats in latitude_matches.chain(exact_lat_iter) {
+            for lat in lats.1 {
+                let address = Rc::as_ptr(lat);
+                items.insert(address);
             }
         }
+
+        let mut result = Vec::new();
+
+        for longs in longitude_matches.chain(exact_long_iter) {
+            for long in longs.1 {
+                let address = Rc::as_ptr(long);
+                if items.take(&address).is_some() {
+                    result.push(long.clone());
+                }
+            }
+        }
+
+
 
         result
     }
 }
 
-pub struct SearchableList<'a> {
-    fuzzy_data_per_column: Vec<FuzzyMap<'a, Entry>>,
-}
 
-impl<'a> SearchableList<'a> {
-    pub fn new(csv_data: &'a CsvData) -> SearchableList<'a> {
-        let mut map_per_column_list = Vec::new();
-        for _ in &csv_data.headers {
-            map_per_column_list.push(BTreeMap::new());
-        }
 
-        for entry in &csv_data.entries {
-            for (map, col_item) in map_per_column_list.iter_mut().zip(entry.row.iter()) {
-                let key = sanatize(col_item);
-                if !key.is_empty() {
-                    let list = map.entry(key).or_insert_with(Vec::new);
-                    list.push(entry);
-                }
-            }
-        }
 
-        SearchableList {
-            fuzzy_data_per_column: map_per_column_list.into_iter().map(FuzzyMap::new).collect(),
-        }
-    }
 
-    pub fn get_entry_matches(&self, entry: &Entry) -> Vec<&'a Entry> {
-        let mut matches = Vec::new();
 
-        for (fuzz_map, col_item) in self.fuzzy_data_per_column.iter().zip(entry.row.iter()) {
-            let key = sanatize(col_item);
 
-            // TODO: In future, actually make distance configurable,
-            // all callers just hardcode 2 right now
-            let results = fuzz_map.get_matches(&key, 2);
-            matches.extend_from_slice(&results);
-        }
-
-        matches
-    }
-}
-
-lazy_static! {
-    static ref RE_SANATIZE: Regex = Regex::new("[^A-Za-z0-9]").unwrap();
-}
-
-// avoid overly long strings
-fn truncate(input: &str) -> &str {
-    let max_len = if input.len() > 25 { 25 } else { input.len() };
-
-    &input[0..max_len]
-}
-
-fn sanatize(name: &str) -> String {
-    RE_SANATIZE.replace_all(truncate(name), "").to_lowercase()
-}

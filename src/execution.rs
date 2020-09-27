@@ -4,6 +4,7 @@ use crate::models::{CsvData, DedupeTask, Entry};
 use crate::searchable::SearchableList;
 use std::collections::{HashMap, HashSet};
 use std::error::Error;
+use std::rc::Rc;
 
 pub fn run(task: DedupeTask) -> Result<String, Box<dyn Error>> {
     let mut file_util = FileUtil::new();
@@ -36,7 +37,7 @@ pub fn run(task: DedupeTask) -> Result<String, Box<dyn Error>> {
 fn get_duplicate_ids_against_base<'a>(
     searchable_base: &'a SearchableList<'a>,
     comparison_data: &CsvData,
-) -> HashMap<u64, Vec<&'a Entry>> {
+) -> HashMap<u64, Vec<Rc<Entry>>> {
     let mut confirmed_duplicates = HashMap::new();
 
     let total = comparison_data.entries.len();
@@ -45,28 +46,14 @@ fn get_duplicate_ids_against_base<'a>(
     for (i, entry) in comparison_data.entries.iter().enumerate() {
         display_execution_progress(i, total);
 
-        let matches = searchable_base.get_entry_matches(entry);
-
-        let mut id_matches = HashSet::new();
-        let mut already_added_duplicates = HashSet::new();
-        for matched_entry in matches.into_iter() {
-            if matched_entry.id == entry.id {
+        let matches = searchable_base.find_matches(entry);
+        if !matches.is_empty() {
+            if matches.len() == 1 && Rc::ptr_eq(matches[0], entry) {
                 // we do not care about the entry matching themselves
                 continue;
             }
 
-            if single_column || id_matches.contains(&matched_entry.id) {
-                if single_column || !already_added_duplicates.contains(&matched_entry.id) {
-                    let confirmed_list = confirmed_duplicates
-                        .entry(entry.id)
-                        .or_insert_with(Vec::new);
-                    confirmed_list.push(matched_entry);
-                }
-
-                already_added_duplicates.insert(matched_entry.id);
-            }
-
-            id_matches.insert(matched_entry.id);
+            confirmed_duplicates.insert(i, matches);
         }
     }
     confirmed_duplicates

@@ -2,6 +2,7 @@ use crate::models::{CsvData, Entry};
 use csv::{Reader, Writer};
 use std::collections::HashMap;
 use std::error::Error;
+use std::rc::Rc;
 
 pub struct FileUtil {
     last_id_created: u64,
@@ -26,10 +27,10 @@ impl FileUtil {
 
                 self.last_id_created += 1;
 
-                let entry = Entry {
+                let entry = Rc::new(Entry {
                     id: self.last_id_created,
                     row,
-                };
+                });
 
                 entries.push(entry);
             }
@@ -42,7 +43,7 @@ impl FileUtil {
         &self,
         file: &str,
         data: &'a CsvData,
-        duplicate_ids: HashMap<u64, Vec<&'a Entry>>,
+        duplicate_ids: HashMap<u64, Vec<Rc<Entry>>>,
     ) -> Result<String, Box<dyn Error>> {
         let mut new_file: String = {
             if file.ends_with(".csv") {
@@ -72,7 +73,7 @@ impl FileUtil {
     }
 }
 
-fn get_duplicate_string<'a>(id: &u64, duplicate_ids: &HashMap<u64, Vec<&'a Entry>>) -> String {
+fn get_duplicate_string<'a>(id: &u64, duplicate_ids: &HashMap<u64, Vec<Rc<Entry>>>) -> String {
     let mut result = String::new();
 
     if let Some(matches) = duplicate_ids.get(id) {
