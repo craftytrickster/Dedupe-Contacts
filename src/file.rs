@@ -19,20 +19,18 @@ impl FileUtil {
 
         let headers: Vec<String> = rdr.headers()?;
 
-        for record in rdr.decode() {
-            if let Ok(record) = record {
-                let record: Vec<Option<String>> = record;
-                let row: Vec<String> = record.into_iter().map(|x| x.unwrap_or_default()).collect();
+        for record in rdr.decode::<Vec<Option<String>> >().flatten() {
+            let row: Vec<String> = record.into_iter().map(|x| x.unwrap_or_default()).collect();
 
-                self.last_id_created += 1;
+            self.last_id_created += 1;
 
-                let entry = Entry {
-                    id: self.last_id_created,
-                    row,
-                };
+            let entry = Entry {
+                id: self.last_id_created,
+                row,
+            };
 
-                entries.push(entry);
-            }
+            entries.push(entry);
+
         }
 
         Ok(CsvData { headers, entries })
